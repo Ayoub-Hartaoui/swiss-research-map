@@ -1,47 +1,9 @@
 {
   "nodes": [
-    {
-      "id": "0",
-      "label": "FNS (National)",
-      "x": 15,
-      "y": 15,
-      "size": 10,
-      "color": "#ff5f5f",
-      "description": "Finance la recherche via LERI. Axe: Durabilite numerique 2025-2028.",
-      "url": "https://www.snf.ch"
-    },
-    {
-      "id": "1",
-      "label": "Sebastien Stampfli",
-      "x": 26,
-      "y": 15,
-      "size": 7,
-      "color": "#ffa500",
-      "description": "Chef systemes d'information. Contact pour les leviers de durabilite."
-    },
-    {
-      "id": "2",
-      "label": "FNS Secretariat",
-      "x": 15,
-      "y": 46,
-      "size": 10,
-      "color": "#ff5f5f",
-      "description": "Organisme de financement. Priorite: Durabilite 2025.",
-      "url": "https://www.snf.ch"
-    }
+    { "id": "n0", "label": "FNS (National)", "x": 0, "y": 0, "size": 10, "color": "#58a6ff", "description": "Finance la recherche via LERI.", "url": "https://www.snf.ch" },
+    { "id": "n1", "label": "Sebastien Stampfli", "x": 10, "y": 5, "size": 8, "color": "#ffa500", "description": "Chef systemes d'information." }
   ],
   "edges": [
-    {
-      "id": "e0",
-      "source": "0",
-      "target": "1",
-      "color": "#30363d"
-    },
-    {
-      "id": "e1",
-      "source": "0",
-      "target": "2",
-      "color": "#30363d"
-    }
+    { "id": "e0", "source": "n0", "target": "n1" }
   ]
 }
