@@ -2,123 +2,161 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Cartographie Interactive - Recherche Suisse</title>
+    <title>Cartographie Recherche Suisse - Interactif</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sigma.js/1.2.1/sigma.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/sigma.js/1.2.1/plugins/sigma.parsers.json.min.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #0b1015; color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #0b0e14; color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
         #container { position: absolute; width: 100%; height: 100%; }
         
         #sidebar { 
-            position: absolute; left: 20px; top: 20px; width: 300px; 
-            background: rgba(13, 17, 23, 0.95); padding: 25px; 
-            border: 1px solid #30363d; border-radius: 12px; 
-            box-shadow: 0 10px 40px rgba(0,0,0,0.8); z-index: 10;
+            position: absolute; left: 20px; top: 20px; width: 320px; 
+            background: rgba(22, 27, 34, 0.95); padding: 20px; 
+            border: 1px solid #30363d; border-radius: 10px; z-index: 10;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
         }
 
-        h2 { color: #58a6ff; margin: 0 0 10px 0; font-size: 1.3em; }
-        .meta-label { font-weight: bold; color: #8b949e; display: block; margin-top: 15px; text-transform: uppercase; font-size: 0.7em; letter-spacing: 1px; }
-        .description { line-height: 1.5; color: #c9d1d9; font-size: 0.9em; margin-top: 5px; }
-        
-        .btn-link { 
-            display: inline-block; margin-top: 20px; padding: 10px 15px; 
-            background: #238636; color: white; text-decoration: none; 
-            border-radius: 6px; font-weight: bold; font-size: 0.85em;
-        }
+        h2 { color: #58a6ff; margin-top: 0; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
+        .info-box { margin-bottom: 15px; }
+        .label { color: #8b949e; font-size: 0.75rem; text-transform: uppercase; font-weight: bold; }
+        .content { font-size: 0.95rem; color: #c9d1d9; margin-top: 4px; line-height: 1.4; }
+        a { color: #58a6ff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .hint { font-size: 0.8rem; color: #f0883e; font-style: italic; }
     </style>
 </head>
 <body>
 
     <div id="sidebar">
-        <h2 id="node-name">Recherche Suisse</h2>
-        <div id="default-msg"><p class="description">Cliquez sur un organe pour voir les missions.</p></div>
-        
-        <div id="details" style="display:none;">
-            <span class="meta-label">Description Technique</span>
-            <div id="node-desc" class="description"></div>
-            <div id="link-area">
-                <span class="meta-label">Accès Direct</span>
-                <a id="node-url" class="btn-link" target="_blank">Ouvrir le Portail</a>
+        <h2 id="node-name">Explorateur</h2>
+        <div id="details">
+            <div class="info-box">
+                <div class="label">Description</div>
+                <div id="node-desc" class="content">Sélectionnez un nœud pour voir les détails.</div>
             </div>
+            <div id="contact-area" class="info-box" style="display:none;">
+                <div class="label">Contact</div>
+                <div id="node-contact" class="content"></div>
+            </div>
+            <div id="legal-area" class="info-box" style="display:none;">
+                <div class="label">Cadre Légal</div>
+                <div id="node-legal" class="content"></div>
+            </div>
+            <div id="gov-area" class="info-box" style="display:none;">
+                <div class="label">Gouvernance</div>
+                <div class="content"><a id="node-gov" href="#" target="_blank">Lien vers le document</a></div>
+            </div>
+            <p id="hint-msg" class="hint" style="display:none;">💡 Cliquez à nouveau sur FNS pour masquer les comités.</p>
         </div>
     </div>
 
     <div id="container"></div>
 
     <script>
-        // Custom Renderer to draw Images inside the Nodes
-        sigma.canvas.nodes.image = function(node, context, settings) {
-            var prefix = settings('prefix') || '',
-                size = node[prefix + 'size'],
-                x = node[prefix + 'x'],
-                y = node[prefix + 'y'];
+    // 1. Fetch the Tulip JSON
+    fetch('data.json')
+        .then(response => response.json())
+        .then(data => {
+            const tulip = data.graph;
+            const sigmaData = { nodes: [], edges: [] };
 
-            if (!node.image || !node.image.url) return sigma.canvas.nodes.def(node, context, settings);
+            // 2. PARSE NODES (Transform Tulip properties to Sigma format)
+            for (let i = 0; i < tulip.nodesNumber; i++) {
+                const id = i.toString();
+                
+                // Extract coordinates from viewLayout "(x,y,z)"
+                const layout = tulip.properties.viewLayout.nodesValues[id] || "(0,0,0)";
+                const coords = layout.replace(/[()]/g, '').split(',');
 
-            // Draw the image clipped into a circle
-            context.save();
-            context.beginPath();
-            context.arc(x, y, size, 0, Math.PI * 2, true);
-            context.closePath();
-            context.clip();
+                // Extract color from viewColor "(r,g,b,a)"
+                const colorStr = tulip.properties.viewColor.nodesValues[id] || "(200,200,200,255)";
+                const rgba = colorStr.replace(/[()]/g, '').split(',');
+                const hexColor = "#" + ((1 << 24) + (parseInt(rgba[0]) << 16) + (parseInt(rgba[1]) << 8) + parseInt(rgba[2])).toString(16).slice(1);
 
-            if (node.image.content) {
-                context.drawImage(node.image.content, x - size, y - size, size * 2, size * 2);
+                // Build Sigma Node
+                sigmaData.nodes.push({
+                    id: id,
+                    label: tulip.properties.viewLabel.nodesValues[id] || id,
+                    x: parseFloat(coords[0]),
+                    y: -parseFloat(coords[1]), // Flip Y for web standard
+                    size: parseFloat(tulip.properties.viewSize.nodesValues[id]?.split(',')[0].replace('(', '') || 3),
+                    color: hexColor,
+                    // Metadata
+                    description: tulip.properties.description.nodesValues[id] || "",
+                    contact: tulip.properties.contact.nodesValues[id] || "",
+                    cadre_legal: tulip.properties.cadre_legal.nodesValues[id] || "",
+                    gouvernance: tulip.properties.gouvernance.nodesValues[id] || "",
+                    groupId: tulip.properties.groupId.nodesValues[id] || "",
+                    type: (tulip.properties.viewShape.nodesValues[id] === "4") ? 'square' : 'circle'
+                });
             }
-            
-            context.restore();
-            
-            // Draw a thin border around the circle
-            context.beginPath();
-            context.arc(x, y, size, 0, Math.PI * 2, true);
-            context.lineWidth = 2;
-            context.strokeStyle = node.color || '#58a6ff';
-            context.stroke();
-        };
 
-        // Load the Data
-        sigma.parsers.json('data.json', {
-            container: 'container',
-            type: 'canvas', // Required for custom node drawing
-            settings: {
-                minNodeSize: 10,
-                maxNodeSize: 25,
-                labelThreshold: 0,
-                defaultLabelColor: '#fff'
-            }
-        }, function(s) {
-            // PRE-LOADER Logic: Wait for images to download before refreshing
-            var loadedImages = 0,
-                nodesWithImages = s.graph.nodes().filter(n => n.image);
-
-            nodesWithImages.forEach(function(node) {
-                var img = new Image();
-                img.onload = function() {
-                    node.image.content = this;
-                    loadedImages++;
-                    if (loadedImages === nodesWithImages.length) s.refresh();
-                };
-                img.src = node.image.url;
+            // 3. PARSE EDGES
+            tulip.edges.forEach((e, index) => {
+                sigmaData.edges.push({
+                    id: 'e' + index,
+                    source: e[0].toString(),
+                    target: e[1].toString(),
+                    color: '#444'
+                });
             });
 
-            // Click Interactions
-            s.bind('clickNode', function(e) {
-                const node = e.data.node;
-                document.getElementById('default-msg').style.display = 'none';
-                document.getElementById('details').style.display = 'block';
-                document.getElementById('node-name').innerText = node.label;
-                document.getElementById('node-desc').innerText = node.description || "Détails non renseignés.";
-                
-                const url = node.url || node.link;
-                if(url) {
-                    document.getElementById('link-area').style.display = 'block';
-                    document.getElementById('node-url').href = url;
-                } else {
-                    document.getElementById('link-area').style.display = 'none';
+            // 4. INITIALIZE SIGMA
+            const s = new sigma({
+                graph: sigmaData,
+                container: 'container',
+                settings: {
+                    defaultNodeColor: '#ec5148',
+                    edgeColor: 'default',
+                    labelThreshold: 0,
+                    minArrowSize: 10
                 }
             });
 
+            // 5. INTERACTION LOGIC
+            // Hide FNS children by default
+            s.graph.nodes().forEach(n => {
+                if (n.groupId === "FNS_Child") n.hidden = true;
+            });
             s.refresh();
+
+            s.bind('clickNode', function(e) {
+                const n = e.data.node;
+
+                // Toggle logic for FNS
+                if (n.groupId === "FNS_Parent") {
+                    s.graph.nodes().forEach(node => {
+                        if (node.groupId === "FNS_Child") node.hidden = !node.hidden;
+                    });
+                    document.getElementById('hint-msg').style.display = 'block';
+                    s.refresh();
+                }
+
+                // Update Sidebar
+                document.getElementById('node-name').innerText = n.label;
+                document.getElementById('node-desc').innerText = n.description || "Pas de description.";
+                
+                // Show/Hide fields based on content
+                toggleField('contact-area', 'node-contact', n.contact);
+                toggleField('legal-area', 'node-legal', n.cadre_legal);
+                
+                const govArea = document.getElementById('gov-area');
+                if(n.gouvernance) {
+                    govArea.style.display = "block";
+                    document.getElementById('node-gov').href = n.gouvernance;
+                } else {
+                    govArea.style.display = "none";
+                }
+            });
+
+            function toggleField(areaId, textId, value) {
+                const area = document.getElementById(areaId);
+                if (value && value !== "") {
+                    area.style.display = "block";
+                    document.getElementById(textId).innerText = value;
+                } else {
+                    area.style.display = "none";
+                }
+            }
         });
     </script>
 </body>
