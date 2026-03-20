@@ -2,78 +2,112 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cartographie Recherche Suisse</title>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sigma.js/1.2.1/sigma.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sigma.js/1.2.1/plugins/sigma.parsers.json.min.js"></script>
+    
     <style>
-        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0b0e14; color: white; overflow: hidden; }
-        #container { position: absolute; width: 100%; height: 100%; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #0b0e14; color: white; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; }
         
+        /* The Map Container */
+        #container { position: absolute; width: 100%; height: 100%; z-index: 1; }
+        
+        /* The Interactive Sidebar */
         #sidebar { 
-            position: absolute; left: 20px; top: 20px; width: 320px; 
-            background: rgba(23, 27, 34, 0.95); padding: 20px; 
+            position: absolute; left: 20px; top: 20px; width: 300px; 
+            background: rgba(22, 27, 34, 0.9); padding: 25px; 
             border: 1px solid #30363d; border-radius: 12px; 
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5); z-index: 10;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 10;
+            transition: all 0.3s ease;
         }
 
-        h2 { color: #58a6ff; margin-top: 0; }
-        .meta-label { font-weight: bold; color: #8b949e; display: block; margin-top: 15px; text-transform: uppercase; font-size: 0.8em; }
-        .description { line-height: 1.5; color: #c9d1d9; }
+        h2 { color: #58a6ff; margin: 0 0 10px 0; font-size: 1.4em; }
+        .meta-label { font-weight: bold; color: #8b949e; display: block; margin-top: 20px; text-transform: uppercase; font-size: 0.75em; letter-spacing: 1px; }
+        .description { line-height: 1.6; color: #c9d1d9; font-size: 0.95em; margin-top: 5px; }
+        
         .btn-link { 
-            display: inline-block; margin-top: 20px; padding: 10px 15px; 
-            background: #238636; color: white; text-decoration: none; border-radius: 6px; 
+            display: inline-block; margin-top: 25px; padding: 12px 20px; 
+            background: #238636; color: white; text-decoration: none; 
+            border-radius: 6px; font-weight: bold; text-align: center; width: 85%;
         }
         .btn-link:hover { background: #2ea043; }
+        
+        #placeholder-text { font-style: italic; color: #8b949e; }
     </style>
 </head>
 <body>
 
     <div id="sidebar">
-        <h2 id="node-name">Explorateur de Données</h2>
-        <p class="description">Cliquez sur un bureau ou une personne pour voir les missions et les liens de durabilité.</p>
+        <h2 id="node-name">Explorateur</h2>
+        <div id="default-msg">
+            <p id="placeholder-text">Cliquez sur un cercle (Bureau) ou un carré (Personne) pour afficher les détails techniques.</p>
+        </div>
         
         <div id="details" style="display:none;">
-            <span class="meta-label">Mission / Description</span>
+            <span class="meta-label">Mission & Metadata</span>
             <div id="node-desc" class="description"></div>
             
-            <span class="meta-label">Ressources</span>
-            <a id="node-url" class="btn-link" target="_blank">Ouvrir le portail</a>
+            <span id="link-section">
+                <span class="meta-label">Lien Externe</span>
+                <a id="node-url" class="btn-link" target="_blank">Ouvrir le Portail SNF</a>
+            </span>
         </div>
     </div>
 
     <div id="container"></div>
 
     <script>
+        // Initialize Sigma
         sigma.parsers.json('data.json', {
             container: 'container',
             settings: {
                 defaultNodeColor: '#58a6ff',
                 edgeColor: 'default',
-                defaultEdgeColor: '#30363d',
-                labelColor: 'node',
-                labelThreshold: 0, // Shows labels even when zoomed out
-                minNodeSize: 5,
-                maxNodeSize: 15
+                defaultEdgeColor: '#444',
+                labelSize: 'fixed',
+                labelSizeRatio: 2,
+                labelThreshold: 0, // Always show labels
+                minNodeSize: 8,
+                maxNodeSize: 18,
+                zoomMin: 0.01,
+                zoomMax: 3
             }
         }, function(s) {
+            // When a node is clicked
             s.bind('clickNode', function(e) {
                 const node = e.data.node;
+                
+                // UI Updates
+                document.getElementById('default-msg').style.display = 'none';
                 document.getElementById('details').style.display = 'block';
                 document.getElementById('node-name').innerText = node.label;
                 
-                // This checks for both 'description' OR 'info' from your JSON
-                document.getElementById('node-desc').innerText = node.description || node.info || "Aucune description disponible.";
+                // Show description (supports 'description' or 'info' keys)
+                document.getElementById('node-desc').innerText = node.description || node.info || "Pas de description.";
                 
-                const linkElement = document.getElementById('node-url');
-                if(node.url || node.link) {
-                    linkElement.style.display = 'inline-block';
-                    linkElement.href = node.url || node.link;
+                // Show URL button if it exists
+                const url = node.url || node.link;
+                if(url) {
+                    document.getElementById('link-section').style.display = 'block';
+                    document.getElementById('node-url').href = url;
                 } else {
-                    linkElement.style.display = 'none';
+                    document.getElementById('link-section').style.display = 'none';
                 }
             });
-            
-            // This forces the graph to center itself
+
+            // If user clicks the background, reset sidebar (optional)
+            s.bind('clickStage', function() {
+                document.getElementById('details').style.display = 'none';
+                document.getElementById('default-msg').style.display = 'block';
+                document.getElementById('node-name').innerText = "Explorateur";
+            });
+
+            // Adjust the camera to see all nodes immediately
             s.refresh();
-            s.cameras[0].goTo({ x: 0, y: 0, angle: 0, ratio: 1.2 });
+            s.cameras[0].goTo({ x: 0, y: 0, angle: 0, ratio: 1.1 });
         });
+    </script>
+</body>
+</html>
