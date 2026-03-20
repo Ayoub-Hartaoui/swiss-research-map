@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Swiss Research Cartography</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sigma.js/1.2.1/sigma.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sigma.js/1.2.1/plugins/sigma.parsers.json.min.js"></script>
+    <style>
+        #container { top: 0; bottom: 0; left: 0; right: 0; position: absolute; background: #111; }
+        #sidebar { position: absolute; right: 20px; top: 20px; width: 300px; padding: 15px; 
+                  background: rgba(255,255,255,0.9); border-radius: 8px; display: none; font-family: sans-serif; }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    <div id="sidebar">
+        <h2 id="title"></h2>
+        <p id="content"></p>
+        <a id="link" target="_blank">Visit Website</a>
+    </div>
+
+    <script>
+        // Initialize Sigma with your data.json
+        sigma.parsers.json('data.json', {
+            container: 'container',
+            settings: { defaultNodeColor: '#ec5148', edgeColor: 'default', defaultEdgeColor: '#555' }
+        }, function(s) {
+            // When a node is clicked, show the metadata in the sidebar
+            s.bind('clickNode', function(e) {
+                const node = e.data.node;
+                document.getElementById('sidebar').style.display = 'block';
+                document.getElementById('title').innerText = node.label;
+                document.getElementById('content').innerText = node.description || "No description available.";
+                document.getElementById('link').href = node.url || "#";
+            });
+        });
+    </script>
+</body>
+</html>
