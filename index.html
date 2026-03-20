@@ -2,111 +2,123 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cartographie Recherche Suisse</title>
-    
+    <title>Cartographie Interactive - Recherche Suisse</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sigma.js/1.2.1/sigma.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sigma.js/1.2.1/plugins/sigma.parsers.json.min.js"></script>
-    
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #0b0e14; color: white; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #0b1015; color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        #container { position: absolute; width: 100%; height: 100%; }
         
-        /* The Map Container */
-        #container { position: absolute; width: 100%; height: 100%; z-index: 1; }
-        
-        /* The Interactive Sidebar */
         #sidebar { 
             position: absolute; left: 20px; top: 20px; width: 300px; 
-            background: rgba(22, 27, 34, 0.9); padding: 25px; 
+            background: rgba(13, 17, 23, 0.95); padding: 25px; 
             border: 1px solid #30363d; border-radius: 12px; 
-            box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 10;
-            transition: all 0.3s ease;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8); z-index: 10;
         }
 
-        h2 { color: #58a6ff; margin: 0 0 10px 0; font-size: 1.4em; }
-        .meta-label { font-weight: bold; color: #8b949e; display: block; margin-top: 20px; text-transform: uppercase; font-size: 0.75em; letter-spacing: 1px; }
-        .description { line-height: 1.6; color: #c9d1d9; font-size: 0.95em; margin-top: 5px; }
+        h2 { color: #58a6ff; margin: 0 0 10px 0; font-size: 1.3em; }
+        .meta-label { font-weight: bold; color: #8b949e; display: block; margin-top: 15px; text-transform: uppercase; font-size: 0.7em; letter-spacing: 1px; }
+        .description { line-height: 1.5; color: #c9d1d9; font-size: 0.9em; margin-top: 5px; }
         
         .btn-link { 
-            display: inline-block; margin-top: 25px; padding: 12px 20px; 
+            display: inline-block; margin-top: 20px; padding: 10px 15px; 
             background: #238636; color: white; text-decoration: none; 
-            border-radius: 6px; font-weight: bold; text-align: center; width: 85%;
+            border-radius: 6px; font-weight: bold; font-size: 0.85em;
         }
-        .btn-link:hover { background: #2ea043; }
-        
-        #placeholder-text { font-style: italic; color: #8b949e; }
     </style>
 </head>
 <body>
 
     <div id="sidebar">
-        <h2 id="node-name">Explorateur</h2>
-        <div id="default-msg">
-            <p id="placeholder-text">Cliquez sur un cercle (Bureau) ou un carré (Personne) pour afficher les détails techniques.</p>
-        </div>
+        <h2 id="node-name">Recherche Suisse</h2>
+        <div id="default-msg"><p class="description">Cliquez sur un organe pour voir les missions.</p></div>
         
         <div id="details" style="display:none;">
-            <span class="meta-label">Mission & Metadata</span>
+            <span class="meta-label">Description Technique</span>
             <div id="node-desc" class="description"></div>
-            
-            <span id="link-section">
-                <span class="meta-label">Lien Externe</span>
-                <a id="node-url" class="btn-link" target="_blank">Ouvrir le Portail SNF</a>
-            </span>
+            <div id="link-area">
+                <span class="meta-label">Accès Direct</span>
+                <a id="node-url" class="btn-link" target="_blank">Ouvrir le Portail</a>
+            </div>
         </div>
     </div>
 
     <div id="container"></div>
 
     <script>
-        // Initialize Sigma
+        // Custom Renderer to draw Images inside the Nodes
+        sigma.canvas.nodes.image = function(node, context, settings) {
+            var prefix = settings('prefix') || '',
+                size = node[prefix + 'size'],
+                x = node[prefix + 'x'],
+                y = node[prefix + 'y'];
+
+            if (!node.image || !node.image.url) return sigma.canvas.nodes.def(node, context, settings);
+
+            // Draw the image clipped into a circle
+            context.save();
+            context.beginPath();
+            context.arc(x, y, size, 0, Math.PI * 2, true);
+            context.closePath();
+            context.clip();
+
+            if (node.image.content) {
+                context.drawImage(node.image.content, x - size, y - size, size * 2, size * 2);
+            }
+            
+            context.restore();
+            
+            // Draw a thin border around the circle
+            context.beginPath();
+            context.arc(x, y, size, 0, Math.PI * 2, true);
+            context.lineWidth = 2;
+            context.strokeStyle = node.color || '#58a6ff';
+            context.stroke();
+        };
+
+        // Load the Data
         sigma.parsers.json('data.json', {
             container: 'container',
+            type: 'canvas', // Required for custom node drawing
             settings: {
-                defaultNodeColor: '#58a6ff',
-                edgeColor: 'default',
-                defaultEdgeColor: '#444',
-                labelSize: 'fixed',
-                labelSizeRatio: 2,
-                labelThreshold: 0, // Always show labels
-                minNodeSize: 8,
-                maxNodeSize: 18,
-                zoomMin: 0.01,
-                zoomMax: 3
+                minNodeSize: 10,
+                maxNodeSize: 25,
+                labelThreshold: 0,
+                defaultLabelColor: '#fff'
             }
         }, function(s) {
-            // When a node is clicked
+            // PRE-LOADER Logic: Wait for images to download before refreshing
+            var loadedImages = 0,
+                nodesWithImages = s.graph.nodes().filter(n => n.image);
+
+            nodesWithImages.forEach(function(node) {
+                var img = new Image();
+                img.onload = function() {
+                    node.image.content = this;
+                    loadedImages++;
+                    if (loadedImages === nodesWithImages.length) s.refresh();
+                };
+                img.src = node.image.url;
+            });
+
+            // Click Interactions
             s.bind('clickNode', function(e) {
                 const node = e.data.node;
-                
-                // UI Updates
                 document.getElementById('default-msg').style.display = 'none';
                 document.getElementById('details').style.display = 'block';
                 document.getElementById('node-name').innerText = node.label;
+                document.getElementById('node-desc').innerText = node.description || "Détails non renseignés.";
                 
-                // Show description (supports 'description' or 'info' keys)
-                document.getElementById('node-desc').innerText = node.description || node.info || "Pas de description.";
-                
-                // Show URL button if it exists
                 const url = node.url || node.link;
                 if(url) {
-                    document.getElementById('link-section').style.display = 'block';
+                    document.getElementById('link-area').style.display = 'block';
                     document.getElementById('node-url').href = url;
                 } else {
-                    document.getElementById('link-section').style.display = 'none';
+                    document.getElementById('link-area').style.display = 'none';
                 }
             });
 
-            // If user clicks the background, reset sidebar (optional)
-            s.bind('clickStage', function() {
-                document.getElementById('details').style.display = 'none';
-                document.getElementById('default-msg').style.display = 'block';
-                document.getElementById('node-name').innerText = "Explorateur";
-            });
-
-            // Adjust the camera to see all nodes immediately
             s.refresh();
-            s.cameras[0].goTo({ x: 0, y: 0, angle: 0, ratio: 1.1 });
         });
     </script>
 </body>
