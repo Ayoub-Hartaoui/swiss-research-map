@@ -109,9 +109,30 @@
                 
                 // 2. CLICK INTERACTION
                 s.bind('clickNode', function(e) {
-                    const n = e.data.node;
-                    const group = n.groupId;
-                
+                const n = e.data.node;
+                const groups = n.groupId ? n.groupId.split('|') : [];
+            
+                // --- LOGIQUE D'EXPANSION MULTI-NIVEAUX ---
+                groups.forEach(group => {
+                    if (group.endsWith("_Parent")) {
+                        const prefix = group.split('_')[0]; 
+                        const childTarget = prefix + "_Child";
+            
+                        s.graph.nodes().forEach(function(node) {
+                            // Si le nœud appartient au groupe cible, on bascule sa visibilité
+                            if (node.groupId && node.groupId.includes(childTarget)) {
+                                node.hidden = !node.hidden;
+                            }
+                        });
+                    }
+                });
+            
+                s.refresh();
+        
+            // --- MISE À JOUR SIDEBAR ---
+            document.getElementById('node-name').innerText = n.label;
+            document.getElementById('node-desc').innerHTML = n.description || "";
+        });
                     // --- EXPAND/COLLAPSE LOGIC ---
                     // If the group is a "Parent" (e.g., FNS_Parent or SEFRI_Parent)
                     if (group && group.endsWith("_Parent")) {
