@@ -1,37 +1,75 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-    <title>Swiss Research Cartography</title>
+    <meta charset="UTF-8">
+    <title>Cartographie Recherche Suisse</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sigma.js/1.2.1/sigma.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sigma.js/1.2.1/plugins/sigma.parsers.json.min.js"></script>
     <style>
-        #container { top: 0; bottom: 0; left: 0; right: 0; position: absolute; background: #111; }
-        #sidebar { position: absolute; right: 20px; top: 20px; width: 300px; padding: 15px; 
-                  background: rgba(255,255,255,0.9); border-radius: 8px; display: none; font-family: sans-serif; }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0b0e14; color: white; overflow: hidden; }
+        #container { position: absolute; width: 100%; height: 100%; }
+        
+        #sidebar { 
+            position: absolute; left: 20px; top: 20px; width: 320px; 
+            background: rgba(23, 27, 34, 0.95); padding: 20px; 
+            border: 1px solid #30363d; border-radius: 12px; 
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5); z-index: 10;
+        }
+
+        h2 { color: #58a6ff; margin-top: 0; }
+        .meta-label { font-weight: bold; color: #8b949e; display: block; margin-top: 15px; text-transform: uppercase; font-size: 0.8em; }
+        .description { line-height: 1.5; color: #c9d1d9; }
+        .btn-link { 
+            display: inline-block; margin-top: 20px; padding: 10px 15px; 
+            background: #238636; color: white; text-decoration: none; border-radius: 6px; 
+        }
+        .btn-link:hover { background: #2ea043; }
     </style>
 </head>
 <body>
-    <div id="container"></div>
+
     <div id="sidebar">
-        <h2 id="title"></h2>
-        <p id="content"></p>
-        <a id="link" target="_blank">Visit Website</a>
+        <h2 id="node-name">Explorateur de Données</h2>
+        <p class="description">Cliquez sur un bureau ou une personne pour voir les missions et les liens de durabilité.</p>
+        
+        <div id="details" style="display:none;">
+            <span class="meta-label">Mission / Description</span>
+            <div id="node-desc" class="description"></div>
+            
+            <span class="meta-label">Ressources</span>
+            <a id="node-url" class="btn-link" target="_blank">Ouvrir le portail</a>
+        </div>
     </div>
 
+    <div id="container"></div>
+
     <script>
-        // Initialize Sigma with your data.json
         sigma.parsers.json('data.json', {
             container: 'container',
-            settings: { defaultNodeColor: '#ec5148', edgeColor: 'default', defaultEdgeColor: '#555' }
+            settings: {
+                defaultNodeColor: '#58a6ff',
+                edgeColor: 'default',
+                defaultEdgeColor: '#30363d',
+                labelColor: 'node',
+                labelThreshold: 4
+            }
         }, function(s) {
-            // When a node is clicked, show the metadata in the sidebar
             s.bind('clickNode', function(e) {
                 const node = e.data.node;
-                document.getElementById('sidebar').style.display = 'block';
-                document.getElementById('title').innerText = node.label;
-                document.getElementById('content').innerText = node.description || "No description available.";
-                document.getElementById('link').href = node.url || "#";
+                document.getElementById('details').style.display = 'block';
+                document.getElementById('node-name').innerText = node.label;
+                document.getElementById('node-desc').innerText = node.description || "Aucune description disponible pour cet organe.";
+                
+                if(node.url) {
+                    document.getElementById('node-url').style.display = 'inline-block';
+                    document.getElementById('node-url').href = node.url;
+                } else {
+                    document.getElementById('node-url').style.display = 'none';
+                }
             });
+            
+            // Refresh to apply the layout colors from JSON
+            s.refresh();
         });
     </script>
 </body>
