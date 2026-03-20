@@ -51,26 +51,29 @@
                 edgeColor: 'default',
                 defaultEdgeColor: '#30363d',
                 labelColor: 'node',
-                labelThreshold: 4
+                labelThreshold: 0, // Shows labels even when zoomed out
+                minNodeSize: 5,
+                maxNodeSize: 15
             }
         }, function(s) {
             s.bind('clickNode', function(e) {
                 const node = e.data.node;
                 document.getElementById('details').style.display = 'block';
                 document.getElementById('node-name').innerText = node.label;
-                document.getElementById('node-desc').innerText = node.description || "Aucune description disponible pour cet organe.";
                 
-                if(node.url) {
-                    document.getElementById('node-url').style.display = 'inline-block';
-                    document.getElementById('node-url').href = node.url;
+                // This checks for both 'description' OR 'info' from your JSON
+                document.getElementById('node-desc').innerText = node.description || node.info || "Aucune description disponible.";
+                
+                const linkElement = document.getElementById('node-url');
+                if(node.url || node.link) {
+                    linkElement.style.display = 'inline-block';
+                    linkElement.href = node.url || node.link;
                 } else {
-                    document.getElementById('node-url').style.display = 'none';
+                    linkElement.style.display = 'none';
                 }
             });
             
-            // Refresh to apply the layout colors from JSON
+            // This forces the graph to center itself
             s.refresh();
+            s.cameras[0].goTo({ x: 0, y: 0, angle: 0, ratio: 1.2 });
         });
-    </script>
-</body>
-</html>
